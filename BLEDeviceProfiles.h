@@ -23,12 +23,23 @@ enum class SensorGroup {
 
 // Service UUIDs for different sensor groups
 namespace ServiceUUIDs {
-    const char* const ENVIRONMENTAL = "12345678-1234-1001-8000-00805F9B34FB";
-    const char* const AIR_QUALITY = "12345678-1234-1002-8000-00805F9B34FB";
-    const char* const MOTION = "12345678-1234-1003-8000-00805F9B34FB";
-    const char* const AMBIENT = "12345678-1234-1004-8000-00805F9B34FB";
-    const char* const SYSTEM = "12345678-1234-1005-8000-00805F9B34FB";
-    const char* const CURRENT = "12345678-1234-1006-8000-00805F9B34FB";
+    // Environmental sensors (temperature, humidity, pressure, altitude)
+    const char* const ENVIRONMENTAL = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E";
+    
+    // Air quality sensors (AQI, TVOC, eCO2, gas resistance)
+    const char* const AIR_QUALITY = "6E400002-B5A3-F393-E0A9-E50E24DCCA9E";
+    
+    // Motion sensors (accelerometer, gyroscope, magnetometer)
+    const char* const MOTION = "6E400003-B5A3-F393-E0A9-E50E24DCCA9E";
+    
+    // Ambient sensors (light, UV, sound)
+    const char* const AMBIENT = "6E400004-B5A3-F393-E0A9-E50E24DCCA9E";
+    
+    // System sensors (battery, CPU temperature, memory, WiFi RSSI)
+    const char* const SYSTEM = "6E400005-B5A3-F393-E0A9-E50E24DCCA9E";
+    
+    // Current sensors (voltage, current, power)
+    const char* const CURRENT = "6E400006-B5A3-F393-E0A9-E50E24DCCA9E";
 }
 
 // Data field types supported
@@ -64,6 +75,9 @@ struct ManufacturerDataFormat {
     uint8_t totalLength;                         // Total data length (excluding company ID)
     std::string description;                     // Human-readable description
     
+    // Default constructor
+    ManufacturerDataFormat() : companyId(0xFFFF), totalLength(0), description("") {}
+    
     ManufacturerDataFormat(uint16_t id, const std::string& desc)
         : companyId(id), totalLength(0), description(desc) {}
 };
@@ -86,6 +100,9 @@ struct DeviceProfile {
     std::vector<std::string> serviceUuids;       // Service UUIDs to identify device
     ManufacturerDataFormat manufacturerFormat;   // Manufacturer data format
     std::vector<ServiceDataFormat> serviceFormats; // Service data formats
+    
+    // Default constructor
+    DeviceProfile() = default;
     
     DeviceProfile(const std::string& name, const std::string& device, 
                   const ManufacturerDataFormat& mfg)
@@ -779,7 +796,10 @@ inline std::vector<MultiGroupSensorData> packMultiGroupSensorData(
     
     std::vector<MultiGroupSensorData> packets;
     
-    for (const auto& [group, values] : groupedValues) {
+    for (const auto& groupPair : groupedValues) {
+        const SensorGroup& group = groupPair.first;
+        const std::map<std::string, float>& values = groupPair.second;
+        
         if (values.empty()) continue;
         
         MultiGroupSensorData packet;
@@ -799,11 +819,16 @@ inline std::map<SensorGroup, std::map<std::string, float>> organizeSensorValuesB
     
     std::map<SensorGroup, std::map<std::string, float>> groupedData;
     
-    for (const auto& [sensorName, values] : sensorData) {
+    for (const auto& sensorPair : sensorData) {
+        const std::string& sensorName = sensorPair.first;
+        const std::map<std::string, float>& values = sensorPair.second;
+        
         SensorGroup group = getSensorGroupFromName(sensorName);
         
         // Merge values into the appropriate group
-        for (const auto& [key, value] : values) {
+        for (const auto& valuePair : values) {
+            const std::string& key = valuePair.first;
+            float value = valuePair.second;
             groupedData[group][key] = value;
         }
     }

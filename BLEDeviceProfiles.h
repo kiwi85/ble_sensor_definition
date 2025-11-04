@@ -116,14 +116,15 @@ inline DeviceProfile createEnvironmentalSensorProfile() {
     // Manufacturer data format for environmental sensors
     ManufacturerDataFormat mfgFormat(0xFFFF, "Environmental sensors data format");
     
-    // Data format: [Temp(2)][Humidity(2)][Pressure(4)][Altitude(2)]
+    // Data format: [Battery(1)][Temp(2)][Humidity(2)][Pressure(4)][Altitude(2)]
     mfgFormat.dataFields = {
-        DataFieldConfig("temperature", 0, DataType::INT16_BE, 0.01f, "°C"),
-        DataFieldConfig("humidity", 2, DataType::UINT16_BE, 0.01f, "%"),
-        DataFieldConfig("pressure", 4, DataType::UINT32_BE, 0.01f, "hPa"),
-        DataFieldConfig("altitude", 8, DataType::INT16_BE, 0.1f, "m")
+        DataFieldConfig("battery", 0, DataType::UINT8, 1.0f, "%"),
+        DataFieldConfig("temperature", 1, DataType::INT16_BE, 0.01f, "°C"),
+        DataFieldConfig("humidity", 3, DataType::UINT16_BE, 0.01f, "%"),
+        DataFieldConfig("pressure", 5, DataType::UINT32_BE, 0.01f, "hPa"),
+        DataFieldConfig("altitude", 9, DataType::INT16_BE, 0.1f, "m")
     };
-    mfgFormat.totalLength = 10;
+    mfgFormat.totalLength = 11;
     
     DeviceProfile profile("Environmental_Sensors", "Environmental", mfgFormat);
     profile.serviceUuids.push_back(ServiceUUIDs::ENVIRONMENTAL);

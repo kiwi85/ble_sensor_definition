@@ -11,6 +11,26 @@
 
 namespace BLEProfiles {
 
+// Sensor group categories for logical organization
+enum class SensorGroup {
+    ENVIRONMENTAL = 0,  // Temperature, Humidity, Pressure
+    AIR_QUALITY = 1,    // Gas sensors, VOC, CO2, particles, AQI
+    MOTION = 2,         // Accelerometer, Gyroscope, Magnetometer, IMU
+    AMBIENT = 3,        // Light, UV, Color, Sound
+    SYSTEM = 4,         // Battery, Power, Charging, System status
+    CURRENT = 5         // Current sensing, power monitoring
+};
+
+// Service UUIDs for different sensor groups
+namespace ServiceUUIDs {
+    const char* const ENVIRONMENTAL = "12345678-1234-1001-8000-00805F9B34FB";
+    const char* const AIR_QUALITY = "12345678-1234-1002-8000-00805F9B34FB";
+    const char* const MOTION = "12345678-1234-1003-8000-00805F9B34FB";
+    const char* const AMBIENT = "12345678-1234-1004-8000-00805F9B34FB";
+    const char* const SYSTEM = "12345678-1234-1005-8000-00805F9B34FB";
+    const char* const CURRENT = "12345678-1234-1006-8000-00805F9B34FB";
+}
+
 // Data field types supported
 enum class DataType {
     UINT8,      // 1 byte unsigned integer
@@ -74,7 +94,194 @@ struct DeviceProfile {
 
 // ========== PREDEFINED DEVICE PROFILES ==========
 
-// M5Stack Environmental Sensor Profile
+// Environmental Sensor Group Profile
+inline DeviceProfile createEnvironmentalSensorProfile() {
+    // Manufacturer data format for environmental sensors
+    ManufacturerDataFormat mfgFormat(0xFFFF, "Environmental sensors data format");
+    
+    // Data format: [Temp(2)][Humidity(2)][Pressure(4)][Altitude(2)]
+    mfgFormat.dataFields = {
+        DataFieldConfig("temperature", 0, DataType::INT16_BE, 0.01f, "°C"),
+        DataFieldConfig("humidity", 2, DataType::UINT16_BE, 0.01f, "%"),
+        DataFieldConfig("pressure", 4, DataType::UINT32_BE, 0.01f, "hPa"),
+        DataFieldConfig("altitude", 8, DataType::INT16_BE, 0.1f, "m")
+    };
+    mfgFormat.totalLength = 10;
+    
+    DeviceProfile profile("Environmental_Sensors", "Environmental", mfgFormat);
+    profile.serviceUuids.push_back(ServiceUUIDs::ENVIRONMENTAL);
+    return profile;
+}
+
+// Air Quality Sensor Group Profile
+inline DeviceProfile createAirQualitySensorProfile() {
+    // Manufacturer data format for air quality sensors
+    ManufacturerDataFormat mfgFormat(0xFFFF, "Air quality sensors data format");
+    
+    // Data format: [AQI(2)][TVOC(2)][eCO2(2)][Gas_resistance(4)]
+    mfgFormat.dataFields = {
+        DataFieldConfig("aqi", 0, DataType::UINT16_BE, 1.0f, "AQI"),
+        DataFieldConfig("tvoc", 2, DataType::UINT16_BE, 1.0f, "ppb"),
+        DataFieldConfig("co2", 4, DataType::UINT16_BE, 1.0f, "ppm"),
+        DataFieldConfig("gas_resistance", 6, DataType::UINT32_BE, 1.0f, "Ohm")
+    };
+    mfgFormat.totalLength = 10;
+    
+    DeviceProfile profile("Air_Quality_Sensors", "AirQuality", mfgFormat);
+    profile.serviceUuids.push_back(ServiceUUIDs::AIR_QUALITY);
+    return profile;
+}
+
+// Motion Sensor Group Profile (IMU/Accelerometer/Gyroscope)
+inline DeviceProfile createMotionSensorProfile() {
+    // Manufacturer data format for motion sensors
+    ManufacturerDataFormat mfgFormat(0xFFFF, "Motion sensors data format");
+    
+    // Data format: [AccelX(2)][AccelY(2)][AccelZ(2)][GyroX(2)][GyroY(2)][GyroZ(2)]
+    mfgFormat.dataFields = {
+        DataFieldConfig("accel_x", 0, DataType::INT16_BE, 0.001f, "g"),
+        DataFieldConfig("accel_y", 2, DataType::INT16_BE, 0.001f, "g"),
+        DataFieldConfig("accel_z", 4, DataType::INT16_BE, 0.001f, "g"),
+        DataFieldConfig("gyro_x", 6, DataType::INT16_BE, 0.1f, "dps"),
+        DataFieldConfig("gyro_y", 8, DataType::INT16_BE, 0.1f, "dps"),
+        DataFieldConfig("gyro_z", 10, DataType::INT16_BE, 0.1f, "dps")
+    };
+    mfgFormat.totalLength = 12;
+    
+    DeviceProfile profile("Motion_Sensors", "Motion", mfgFormat);
+    profile.serviceUuids.push_back(ServiceUUIDs::MOTION);
+    return profile;
+}
+
+// Ambient Light/Color Sensor Group Profile
+inline DeviceProfile createAmbientSensorProfile() {
+    // Manufacturer data format for ambient sensors
+    ManufacturerDataFormat mfgFormat(0xFFFF, "Ambient sensors data format");
+    
+    // Data format: [Brightness(2)][Red(1)][Green(1)][Blue(1)][White(1)]
+    mfgFormat.dataFields = {
+        DataFieldConfig("brightness", 0, DataType::UINT16_BE, 0.01f, "lux"),
+        DataFieldConfig("red", 2, DataType::UINT8, 1.0f, ""),
+        DataFieldConfig("green", 3, DataType::UINT8, 1.0f, ""),
+        DataFieldConfig("blue", 4, DataType::UINT8, 1.0f, ""),
+        DataFieldConfig("white", 5, DataType::UINT8, 1.0f, "")
+    };
+    mfgFormat.totalLength = 6;
+    
+    DeviceProfile profile("Ambient_Sensors", "Ambient", mfgFormat);
+    profile.serviceUuids.push_back(ServiceUUIDs::AMBIENT);
+    return profile;
+}
+
+// System/Power Management Sensor Group Profile
+inline DeviceProfile createSystemSensorProfile() {
+    // Manufacturer data format for system sensors
+    ManufacturerDataFormat mfgFormat(0xFFFF, "System sensors data format");
+    
+    // Data format: [Battery_Level(1)][SOC(2)][Voltage(2)][Current(2)][Charging(1)]
+    mfgFormat.dataFields = {
+        DataFieldConfig("battery_level", 0, DataType::UINT8, 1.0f, "%"),
+        DataFieldConfig("soc", 1, DataType::UINT16_BE, 0.01f, "%"),
+        DataFieldConfig("voltage", 3, DataType::UINT16_BE, 0.001f, "V"),
+        DataFieldConfig("current", 5, DataType::INT16_BE, 0.001f, "A"),
+        DataFieldConfig("charging", 7, DataType::UINT8, 1.0f, "")
+    };
+    mfgFormat.totalLength = 8;
+    
+    DeviceProfile profile("System_Sensors", "System", mfgFormat);
+    profile.serviceUuids.push_back(ServiceUUIDs::SYSTEM);
+    return profile;
+}
+
+// Current Sensing Profile (SCT013, etc.)
+inline DeviceProfile createCurrentSensorProfile() {
+    // Manufacturer data format for current sensors
+    ManufacturerDataFormat mfgFormat(0xFFFF, "Current sensors data format");
+    
+    // Data format: [RMS_Current(4)][Power(4)][Energy(4)]
+    mfgFormat.dataFields = {
+        DataFieldConfig("rms_current", 0, DataType::FLOAT_BE, 1.0f, "A"),
+        DataFieldConfig("power", 4, DataType::FLOAT_BE, 1.0f, "W"),
+        DataFieldConfig("energy", 8, DataType::FLOAT_BE, 1.0f, "Wh")
+    };
+    mfgFormat.totalLength = 12;
+    
+    DeviceProfile profile("Current_Sensors", "Current", mfgFormat);
+    profile.serviceUuids.push_back(ServiceUUIDs::CURRENT);
+    return profile;
+}
+
+// ========== DEVICE-SPECIFIC PROFILES ==========
+
+// M5Stack with comprehensive sensor suite
+inline DeviceProfile createM5StackComprehensiveProfile() {
+    // Manufacturer data format combining multiple sensor types
+    ManufacturerDataFormat mfgFormat(0xFFFF, "M5Stack comprehensive sensor format");
+    
+    // Data format: [Battery(1)][Temp(2)][Humidity(2)][Pressure(2)][AQI(2)][AccelMag(2)][Status(1)]
+    mfgFormat.dataFields = {
+        DataFieldConfig("battery", 0, DataType::UINT8, 1.0f, "%"),
+        DataFieldConfig("temperature", 1, DataType::INT16_BE, 0.01f, "°C"),
+        DataFieldConfig("humidity", 3, DataType::UINT16_BE, 0.01f, "%"),
+        DataFieldConfig("pressure", 5, DataType::UINT16_BE, 0.1f, "hPa"),
+        DataFieldConfig("air_quality", 7, DataType::UINT16_BE, 1.0f, "AQI"),
+        DataFieldConfig("acceleration", 9, DataType::UINT16_BE, 0.001f, "g"),
+        DataFieldConfig("status", 11, DataType::UINT8, 1.0f, "")
+    };
+    mfgFormat.totalLength = 12;
+    
+    DeviceProfile profile("M5Stack_Comprehensive", "M5Stack-Full", mfgFormat);
+    profile.serviceUuids.push_back(ServiceUUIDs::ENVIRONMENTAL);
+    profile.serviceUuids.push_back(ServiceUUIDs::AIR_QUALITY);
+    profile.serviceUuids.push_back(ServiceUUIDs::MOTION);
+    profile.serviceUuids.push_back(ServiceUUIDs::SYSTEM);
+    return profile;
+}
+
+// ESP32 Development Board with common sensors
+inline DeviceProfile createESP32DevBoardProfile() {
+    // Manufacturer data format for ESP32 development board
+    ManufacturerDataFormat mfgFormat(0xFFFF, "ESP32 development board sensor format");
+    
+    // Data format: [Temp(2)][Humidity(2)][Light(2)][Motion(1)][GPIO_Status(1)]
+    mfgFormat.dataFields = {
+        DataFieldConfig("temperature", 0, DataType::INT16_BE, 0.01f, "°C"),
+        DataFieldConfig("humidity", 2, DataType::UINT16_BE, 0.01f, "%"),
+        DataFieldConfig("brightness", 4, DataType::UINT16_BE, 0.1f, "lux"),
+        DataFieldConfig("motion_detected", 6, DataType::UINT8, 1.0f, ""),
+        DataFieldConfig("gpio_status", 7, DataType::UINT8, 1.0f, "")
+    };
+    mfgFormat.totalLength = 8;
+    
+    DeviceProfile profile("ESP32_DevBoard", "ESP32-Dev", mfgFormat);
+    profile.serviceUuids.push_back(ServiceUUIDs::ENVIRONMENTAL);
+    profile.serviceUuids.push_back(ServiceUUIDs::AMBIENT);
+    return profile;
+}
+
+// Weather Station Profile (Outdoor environmental monitoring)
+inline DeviceProfile createWeatherStationProfile() {
+    // Manufacturer data format for weather station
+    ManufacturerDataFormat mfgFormat(0xFFFF, "Weather station data format");
+    
+    // Data format: [Temp(2)][Humidity(2)][Pressure(4)][AQI(2)][UV(1)][Wind(1)]
+    mfgFormat.dataFields = {
+        DataFieldConfig("temperature", 0, DataType::INT16_BE, 0.01f, "°C"),
+        DataFieldConfig("humidity", 2, DataType::UINT16_BE, 0.01f, "%"),
+        DataFieldConfig("pressure", 4, DataType::UINT32_BE, 0.01f, "hPa"),
+        DataFieldConfig("air_quality", 8, DataType::UINT16_BE, 1.0f, "AQI"),
+        DataFieldConfig("uv_index", 10, DataType::UINT8, 0.1f, ""),
+        DataFieldConfig("wind_speed", 11, DataType::UINT8, 0.1f, "m/s")
+    };
+    mfgFormat.totalLength = 12;
+    
+    DeviceProfile profile("Weather_Station", "WeatherStation", mfgFormat);
+    profile.serviceUuids.push_back(ServiceUUIDs::ENVIRONMENTAL);
+    profile.serviceUuids.push_back(ServiceUUIDs::AIR_QUALITY);
+    return profile;
+}
+
+// M5Stack Environmental Sensor Profile (Original - kept for compatibility)
 inline DeviceProfile createM5StackSensorProfile() {
     // Manufacturer data format (7 bytes of sensor data)
     ManufacturerDataFormat mfgFormat(0xFFFF, "M5Stack compact environmental sensor format");
@@ -117,10 +324,132 @@ inline DeviceProfile createGenericSensorProfile() {
 // Get all available profiles
 inline std::vector<DeviceProfile> getAllProfiles() {
     return {
+        // Original profiles (for compatibility)
         createM5StackSensorProfile(),
-        createGenericSensorProfile()
-        // Add more profiles here as needed
+        createGenericSensorProfile(),
+        
+        // Sensor group profiles
+        createEnvironmentalSensorProfile(),
+        createAirQualitySensorProfile(),
+        createMotionSensorProfile(),
+        createAmbientSensorProfile(),
+        createSystemSensorProfile(),
+        createCurrentSensorProfile(),
+        
+        // Device-specific profiles
+        createM5StackComprehensiveProfile(),
+        createESP32DevBoardProfile(),
+        createWeatherStationProfile()
     };
+}
+
+// Get profiles by sensor group
+inline std::vector<DeviceProfile> getProfilesByGroup(SensorGroup group) {
+    std::vector<DeviceProfile> profiles;
+    
+    switch (group) {
+        case SensorGroup::ENVIRONMENTAL:
+            profiles.push_back(createEnvironmentalSensorProfile());
+            profiles.push_back(createWeatherStationProfile());
+            break;
+        case SensorGroup::AIR_QUALITY:
+            profiles.push_back(createAirQualitySensorProfile());
+            profiles.push_back(createWeatherStationProfile());
+            break;
+        case SensorGroup::MOTION:
+            profiles.push_back(createMotionSensorProfile());
+            break;
+        case SensorGroup::AMBIENT:
+            profiles.push_back(createAmbientSensorProfile());
+            profiles.push_back(createESP32DevBoardProfile());
+            break;
+        case SensorGroup::SYSTEM:
+            profiles.push_back(createSystemSensorProfile());
+            profiles.push_back(createM5StackComprehensiveProfile());
+            break;
+        case SensorGroup::CURRENT:
+            profiles.push_back(createCurrentSensorProfile());
+            break;
+    }
+    
+    return profiles;
+}
+
+// Get service UUID for sensor group
+inline const char* getServiceUUIDForGroup(SensorGroup group) {
+    switch (group) {
+        case SensorGroup::ENVIRONMENTAL: return ServiceUUIDs::ENVIRONMENTAL;
+        case SensorGroup::AIR_QUALITY: return ServiceUUIDs::AIR_QUALITY;
+        case SensorGroup::MOTION: return ServiceUUIDs::MOTION;
+        case SensorGroup::AMBIENT: return ServiceUUIDs::AMBIENT;
+        case SensorGroup::SYSTEM: return ServiceUUIDs::SYSTEM;
+        case SensorGroup::CURRENT: return ServiceUUIDs::CURRENT;
+        default: return ServiceUUIDs::ENVIRONMENTAL;
+    }
+}
+
+// Determine sensor group from sensor name
+inline SensorGroup getSensorGroupFromName(const std::string& sensorName) {
+    // Environmental sensors
+    if (sensorName.find("bmp") != std::string::npos ||
+        sensorName.find("hdc") != std::string::npos ||
+        sensorName.find("sht") != std::string::npos ||
+        sensorName.find("dht") != std::string::npos ||
+        sensorName.find("aht") != std::string::npos ||
+        sensorName.find("temperature") != std::string::npos ||
+        sensorName.find("humidity") != std::string::npos ||
+        sensorName.find("pressure") != std::string::npos) {
+        return SensorGroup::ENVIRONMENTAL;
+    }
+    
+    // Air quality sensors
+    if (sensorName.find("ens") != std::string::npos ||
+        sensorName.find("sgp") != std::string::npos ||
+        sensorName.find("ccs") != std::string::npos ||
+        sensorName.find("aqi") != std::string::npos ||
+        sensorName.find("co2") != std::string::npos ||
+        sensorName.find("tvoc") != std::string::npos) {
+        return SensorGroup::AIR_QUALITY;
+    }
+    
+    // Motion sensors
+    if (sensorName.find("mpu") != std::string::npos ||
+        sensorName.find("bmi") != std::string::npos ||
+        sensorName.find("bmm") != std::string::npos ||
+        sensorName.find("lsm") != std::string::npos ||
+        sensorName.find("accel") != std::string::npos ||
+        sensorName.find("gyro") != std::string::npos ||
+        sensorName.find("magnet") != std::string::npos) {
+        return SensorGroup::MOTION;
+    }
+    
+    // Ambient sensors
+    if (sensorName.find("veml") != std::string::npos ||
+        sensorName.find("tsl") != std::string::npos ||
+        sensorName.find("bh1") != std::string::npos ||
+        sensorName.find("light") != std::string::npos ||
+        sensorName.find("color") != std::string::npos ||
+        sensorName.find("brightness") != std::string::npos) {
+        return SensorGroup::AMBIENT;
+    }
+    
+    // System sensors
+    if (sensorName.find("bq") != std::string::npos ||
+        sensorName.find("ip5306") != std::string::npos ||
+        sensorName.find("battery") != std::string::npos ||
+        sensorName.find("power") != std::string::npos ||
+        sensorName.find("charging") != std::string::npos) {
+        return SensorGroup::SYSTEM;
+    }
+    
+    // Current sensors
+    if (sensorName.find("sct") != std::string::npos ||
+        sensorName.find("current") != std::string::npos) {
+        return SensorGroup::CURRENT;
+    }
+    
+    // Default to environmental
+    return SensorGroup::ENVIRONMENTAL;
 }
 
 // Find profile by name
@@ -356,6 +685,130 @@ inline std::vector<uint8_t> packManufacturerData(const std::map<std::string, flo
     }
     
     return data;
+}
+
+// ========== SENSOR GROUP UTILITIES ==========
+
+// Pack sensor values into manufacturer data for a specific sensor group
+inline std::vector<uint8_t> packSensorGroupData(const std::map<std::string, float>& values,
+                                                 SensorGroup group) {
+    DeviceProfile profile;
+    
+    switch (group) {
+        case SensorGroup::ENVIRONMENTAL:
+            profile = createEnvironmentalSensorProfile();
+            break;
+        case SensorGroup::AIR_QUALITY:
+            profile = createAirQualitySensorProfile();
+            break;
+        case SensorGroup::MOTION:
+            profile = createMotionSensorProfile();
+            break;
+        case SensorGroup::AMBIENT:
+            profile = createAmbientSensorProfile();
+            break;
+        case SensorGroup::SYSTEM:
+            profile = createSystemSensorProfile();
+            break;
+        case SensorGroup::CURRENT:
+            profile = createCurrentSensorProfile();
+            break;
+        default:
+            profile = createEnvironmentalSensorProfile();
+            break;
+    }
+    
+    return packManufacturerData(values, profile.manufacturerFormat);
+}
+
+// Parse sensor values from manufacturer data for a specific sensor group
+inline std::map<std::string, float> parseSensorGroupData(const uint8_t* data, size_t dataLength,
+                                                          SensorGroup group) {
+    DeviceProfile profile;
+    
+    switch (group) {
+        case SensorGroup::ENVIRONMENTAL:
+            profile = createEnvironmentalSensorProfile();
+            break;
+        case SensorGroup::AIR_QUALITY:
+            profile = createAirQualitySensorProfile();
+            break;
+        case SensorGroup::MOTION:
+            profile = createMotionSensorProfile();
+            break;
+        case SensorGroup::AMBIENT:
+            profile = createAmbientSensorProfile();
+            break;
+        case SensorGroup::SYSTEM:
+            profile = createSystemSensorProfile();
+            break;
+        case SensorGroup::CURRENT:
+            profile = createCurrentSensorProfile();
+            break;
+        default:
+            profile = createEnvironmentalSensorProfile();
+            break;
+    }
+    
+    return parseManufacturerData(data, dataLength, profile.manufacturerFormat);
+}
+
+// Get human-readable name for sensor group
+inline std::string getSensorGroupName(SensorGroup group) {
+    switch (group) {
+        case SensorGroup::ENVIRONMENTAL: return "Environmental";
+        case SensorGroup::AIR_QUALITY: return "Air Quality";
+        case SensorGroup::MOTION: return "Motion";
+        case SensorGroup::AMBIENT: return "Ambient";
+        case SensorGroup::SYSTEM: return "System";
+        case SensorGroup::CURRENT: return "Current";
+        default: return "Unknown";
+    }
+}
+
+// Create multi-group sensor data packet
+struct MultiGroupSensorData {
+    SensorGroup group;
+    std::vector<uint8_t> data;
+    std::string serviceUuid;
+};
+
+// Pack multiple sensor groups into separate data packets
+inline std::vector<MultiGroupSensorData> packMultiGroupSensorData(
+    const std::map<SensorGroup, std::map<std::string, float>>& groupedValues) {
+    
+    std::vector<MultiGroupSensorData> packets;
+    
+    for (const auto& [group, values] : groupedValues) {
+        if (values.empty()) continue;
+        
+        MultiGroupSensorData packet;
+        packet.group = group;
+        packet.data = packSensorGroupData(values, group);
+        packet.serviceUuid = getServiceUUIDForGroup(group);
+        
+        packets.push_back(packet);
+    }
+    
+    return packets;
+}
+
+// Organize sensor values by group from a flat map
+inline std::map<SensorGroup, std::map<std::string, float>> organizeSensorValuesByGroup(
+    const std::map<std::string, std::map<std::string, float>>& sensorData) {
+    
+    std::map<SensorGroup, std::map<std::string, float>> groupedData;
+    
+    for (const auto& [sensorName, values] : sensorData) {
+        SensorGroup group = getSensorGroupFromName(sensorName);
+        
+        // Merge values into the appropriate group
+        for (const auto& [key, value] : values) {
+            groupedData[group][key] = value;
+        }
+    }
+    
+    return groupedData;
 }
 
 } // namespace BLEProfiles

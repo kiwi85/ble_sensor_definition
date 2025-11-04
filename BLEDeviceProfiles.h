@@ -317,7 +317,7 @@ inline DeviceProfile createM5StackSensorProfile() {
     DeviceProfile profile("M5Stack_Environmental", "M5Stack", mfgFormat);
     
     // Add service UUIDs for identification
-    profile.serviceUuids.push_back("18dc799a-e8f3-4f75-83b5-d594b1c0e4a0"); // Custom Air Quality Service
+    profile.serviceUuids.push_back(ServiceUUIDs::ENVIRONMENTAL); // Use new environmental service UUID
     
     return profile;
 }

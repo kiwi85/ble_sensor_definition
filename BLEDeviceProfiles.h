@@ -108,14 +108,14 @@ inline const std::vector<SimpleDeviceProfile>& getProfiles() {
 inline const SimpleDeviceProfile* findProfileByUuid(const std::string& uuid) {
     const auto& profiles = getProfiles();
     auto it = std::find_if(profiles.begin(), profiles.end(),
-                           [&](const auto& p){ return p.serviceUuid == uuid; });
+                           [&](const SimpleDeviceProfile& p){ return p.serviceUuid == uuid; });
     return (it != profiles.end()) ? &(*it) : nullptr;
 }
 
 inline const SimpleDeviceProfile* findProfileByName(const std::string& name) {
     const auto& profiles = getProfiles();
     auto it = std::find_if(profiles.begin(), profiles.end(),
-                           [&](const auto& p){ return p.name == name; });
+                           [&](const SimpleDeviceProfile& p){ return p.name == name; });
     return (it != profiles.end()) ? &(*it) : nullptr;
 }
 

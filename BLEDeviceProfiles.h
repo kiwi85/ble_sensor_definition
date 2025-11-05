@@ -1,3 +1,4 @@
+
 #pragma once
 #include <string>
 #include <vector>
@@ -9,6 +10,7 @@
 #ifdef ARDUINO_JSON_VERSION
 #include <ArduinoJson.h>
 #endif
+
 
 namespace BLEProfiles {
 
@@ -51,6 +53,14 @@ static const char* UUID_AIR_QUALITY     =  "5e4a7bb8-3a1e-4a3a-b3a4-38b28a09118d
 static const char* UUID_POWER_MONITOR   =  "cb8b69d4-1b8d-4c83-a0b7-4d857f5f9ac4";
 static const char* UUID_ENVIRONMENTAL   =  "2b83f732-daf7-41a9-a214-f6b726e2927d";
 static const char* UUID_M5STACK_SENSOR  =  "18dc799a-e8f3-4f75-83b5-d594b1c0e4a0";  // Your M5Stack device
+
+
+// Standard characteristic UUIDs for Environmental Node profile
+static const char* UUID_BATTERY_CHAR     = "2A19";
+static const char* UUID_TEMPERATURE_CHAR = "2A6E";
+static const char* UUID_HUMIDITY_CHAR    = "2A6F";
+static const char* UUID_PRESSURE_CHAR    = "2A6D";
+
 
 // ─────────────────────────────────────────────
 // 3. Known device profiles (manual layout)

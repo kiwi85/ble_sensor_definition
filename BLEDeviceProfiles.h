@@ -50,6 +50,7 @@ static const char* UUID_WEATHER_STATION =  "e3b5f4c6-6b4f-4a1f-8b22-962a315a9c9b
 static const char* UUID_AIR_QUALITY     =  "5e4a7bb8-3a1e-4a3a-b3a4-38b28a09118d";
 static const char* UUID_POWER_MONITOR   =  "cb8b69d4-1b8d-4c83-a0b7-4d857f5f9ac4";
 static const char* UUID_ENVIRONMENTAL   =  "2b83f732-daf7-41a9-a214-f6b726e2927d";
+static const char* UUID_M5STACK_SENSOR  =  "18dc799a-e8f3-4f75-83b5-d594b1c0e4a0";  // Your M5Stack device
 
 // ─────────────────────────────────────────────
 // 3. Known device profiles (manual layout)
@@ -91,6 +92,16 @@ inline const std::vector<SimpleDeviceProfile>& getProfiles() {
         // ───────────── Environmental Node ─────────────
         {
             "EnvironmentalNode", UUID_ENVIRONMENTAL, 0xFFFF, {
+                { "battery",     0, DataType::UINT8,      1.0f,  "%"   },
+                { "temperature", 1, DataType::INT16_BE,   0.01f, "°C"  },
+                { "humidity",    3, DataType::UINT16_BE,  0.01f, "%"   },
+                { "pressure",    5, DataType::UINT32_BE,  0.01f, "hPa" },
+            }
+        },
+
+        // ───────────── M5Stack Sensor ─────────────
+        {
+            "M5StackSensor", UUID_M5STACK_SENSOR, 0xFFFF, {
                 { "battery",     0, DataType::UINT8,      1.0f,  "%"   },
                 { "temperature", 1, DataType::INT16_BE,   0.01f, "°C"  },
                 { "humidity",    3, DataType::UINT16_BE,  0.01f, "%"   },

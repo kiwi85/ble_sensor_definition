@@ -314,7 +314,7 @@ inline DeviceProfile createM5StackSensorProfile() {
     };
     mfgFormat.totalLength = 7; // Total data length (excluding company ID)
     
-    DeviceProfile profile("M5Stack_Environmental", "M5Stack", mfgFormat);
+    DeviceProfile profile("Environmental Sensing", "M5Stack", mfgFormat);
     
     // Add service UUIDs for identification
     profile.serviceUuids.push_back(ServiceUUIDs::ENVIRONMENTAL); // Use new environmental service UUID

@@ -1,3 +1,16 @@
+// Parse all fields from service data
+inline std::map<std::string, float> parseServiceData(const uint8_t* data, size_t dataLength, 
+                                                     const ServiceDataFormat& format) {
+    std::map<std::string, float> results;
+    if (dataLength < format.totalLength) {
+        return results; // Not enough data
+    }
+    for (const auto& field : format.dataFields) {
+        float value = parseValue(data, dataLength, field);
+        results[field.sensorName] = value;
+    }
+    return results;
+}
 #pragma once
 
 #include <string>

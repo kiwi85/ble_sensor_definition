@@ -44,7 +44,7 @@ enum class DataType {
 };
 
 // -------------------------------------------------------------
-// DataFieldConfig definition
+// DataFieldConfig
 // -------------------------------------------------------------
 struct DataFieldConfig {
     std::string sensorName;
@@ -86,7 +86,7 @@ struct ServiceDataFormat {
 };
 
 // -------------------------------------------------------------
-// DeviceProfile definition
+// DeviceProfile
 // -------------------------------------------------------------
 struct DeviceProfile {
     std::string profileName;
@@ -162,7 +162,7 @@ inline float parseValue(const uint8_t* data, size_t dataLength,
 }
 
 // -------------------------------------------------------------
-// Parse manufacturer data
+// Parse manufacturer and service data
 // -------------------------------------------------------------
 inline std::map<std::string, float> parseManufacturerData(
     const uint8_t* data, size_t dataLength,
@@ -184,9 +184,6 @@ inline std::map<std::string, float> parseManufacturerData(
     return results;
 }
 
-// -------------------------------------------------------------
-// ✅ parseServiceData — now placed *after* struct definition
-// -------------------------------------------------------------
 inline std::map<std::string, float> parseServiceData(
     const uint8_t* data, size_t dataLength,
     const ServiceDataFormat& format)
@@ -201,7 +198,7 @@ inline std::map<std::string, float> parseServiceData(
 }
 
 // -------------------------------------------------------------
-// Example: create Environmental Profile
+// Profile creation helpers
 // -------------------------------------------------------------
 inline DeviceProfile createEnviromentalProfile() {
     ManufacturerDataFormat mfg(0x1234, "Enviromental Manufacturer Data");
@@ -220,6 +217,80 @@ inline DeviceProfile createEnviromentalProfile() {
     profile.serviceUuids = { ServiceUUIDs::ENVIRONMENTAL };
     profile.serviceFormats = { service };
     return profile;
+}
+
+// alias for your existing code
+inline DeviceProfile createEnvironmentalSensorProfile() {
+    return createEnviromentalProfile();
+}
+
+// -------------------------------------------------------------
+// Utility mapping functions expected by main.cpp
+// -------------------------------------------------------------
+inline std::string getSensorGroupName(SensorGroup group) {
+    switch (group) {
+        case SensorGroup::ENVIRONMENTAL: return "Environmental";
+        case SensorGroup::AIR_QUALITY:   return "AirQuality";
+        case SensorGroup::MOTION:        return "Motion";
+        case SensorGroup::AMBIENT:       return "Ambient";
+        case SensorGroup::SYSTEM:        return "System";
+        case SensorGroup::CURRENT:       return "Current";
+        default:                         return "Unknown";
+    }
+}
+
+inline const char* getServiceUUIDForGroup(SensorGroup group) {
+    switch (group) {
+        case SensorGroup::ENVIRONMENTAL: return ServiceUUIDs::ENVIRONMENTAL;
+        case SensorGroup::AIR_QUALITY:   return ServiceUUIDs::AIR_QUALITY;
+        case SensorGroup::MOTION:        return ServiceUUIDs::MOTION;
+        case SensorGroup::AMBIENT:       return ServiceUUIDs::AMBIENT;
+        case SensorGroup::SYSTEM:        return ServiceUUIDs::SYSTEM;
+        case SensorGroup::CURRENT:       return ServiceUUIDs::CURRENT;
+        default:                         return "";
+    }
+}
+
+// -------------------------------------------------------------
+// Data packing helpers
+// -------------------------------------------------------------
+inline std::vector<uint8_t> packManufacturerData(
+    const std::map<std::string, float>& sensorValues,
+    const ManufacturerDataFormat& format)
+{
+    std::vector<uint8_t> data(2 + format.totalLength, 0);
+    data[0] = static_cast<uint8_t>(format.companyId & 0xFF);
+    data[1] = static_cast<uint8_t>(format.companyId >> 8);
+
+    for (const auto& field : format.dataFields) {
+        auto it = sensorValues.find(field.sensorName);
+        if (it == sensorValues.end()) continue;
+        float val = it->second / field.scale;
+
+        switch (field.dataType) {
+            case DataType::INT16_LE: {
+                int16_t v = static_cast<int16_t>(val);
+                data[2 + field.offset]     = v & 0xFF;
+                data[2 + field.offset + 1] = (v >> 8) & 0xFF;
+                break;
+            }
+            default: break;
+        }
+    }
+    return data;
+}
+
+inline std::vector<uint8_t> packSensorGroupData(
+    const std::map<std::string, float>& sensorValues,
+    SensorGroup group)
+{
+    DeviceProfile profile;
+    if (group == SensorGroup::ENVIRONMENTAL)
+        profile = createEnviromentalProfile();
+    else
+        return {};
+
+    return packManufacturerData(sensorValues, profile.manufacturerFormat);
 }
 
 // -------------------------------------------------------------

@@ -7,7 +7,7 @@
 #include <cstring>
 
 namespace BLEProfiles {
-
+static constexpr uint16_t COMPANY_ID = 0x1234; // Example Company Identifier (replace with actual)
 // -------------------------------------------------------------
 // Sensor group categories
 // -------------------------------------------------------------
@@ -67,7 +67,7 @@ struct ManufacturerDataFormat {
     uint8_t totalLength;
     std::string description;
 
-    ManufacturerDataFormat() : companyId(0xFFFF), totalLength(0), description("") {}
+    ManufacturerDataFormat() : companyId(COMPANY_ID), totalLength(0), description("") {}
     ManufacturerDataFormat(uint16_t id, const std::string& desc)
         : companyId(id), totalLength(0), description(desc) {}
 };
@@ -201,7 +201,7 @@ inline std::map<std::string, float> parseServiceData(
 // Profile creation helpers
 // -------------------------------------------------------------
 inline DeviceProfile createEnviromentalProfile() {
-    ManufacturerDataFormat mfg(0x1234, "Enviromental Manufacturer Data");
+    ManufacturerDataFormat mfg(COMPANY_ID, "Enviromental Manufacturer Data");
     mfg.dataFields = {
         {"Temperature", 0, DataType::INT16_LE, 0.01f, "°C"},
         {"Humidity",    2, DataType::UINT16_LE, 0.01f, "%"},

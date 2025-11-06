@@ -274,6 +274,20 @@ inline std::vector<uint8_t> packManufacturerData(
                 data[2 + field.offset + 1] = (v >> 8) & 0xFF;
                 break;
             }
+            case DataType::UINT16_LE: {
+                uint16_t v = static_cast<uint16_t>(val);
+                data[2 + field.offset]     = v & 0xFF;
+                data[2 + field.offset + 1] = (v >> 8) & 0xFF;
+                break;
+            }
+            case DataType::UINT32_LE: {
+                uint32_t v = static_cast<uint32_t>(val);
+                data[2 + field.offset]     = v & 0xFF;
+                data[2 + field.offset + 1] = (v >> 8) & 0xFF;
+                data[2 + field.offset + 2] = (v >> 16) & 0xFF;
+                data[2 + field.offset + 3] = (v >> 24) & 0xFF;
+                break;
+            }
             default: break;
         }
     }

@@ -205,13 +205,14 @@ inline DeviceProfile createEnviromentalProfile() {
     mfg.dataFields = {
         {"Temperature", 0, DataType::INT16_LE, 0.01f, "°C"},
         {"Humidity",    2, DataType::UINT16_LE, 0.01f, "%"},
-        {"Pressure",    4, DataType::UINT32_LE, 0.001f, "hPa"}
+        {"Pressure",    4, DataType::UINT32_LE, 0.001f, "hPa"},
+        {"Battery",     8, DataType::UINT8,     1.0f, "%"}
     };
-    mfg.totalLength = 8;
+    mfg.totalLength = 9;
 
     ServiceDataFormat service(ServiceUUIDs::ENVIRONMENTAL, "Environmental Sensor Data");
     service.dataFields = mfg.dataFields;
-    service.totalLength = 8;
+    service.totalLength = 9;
 
     DeviceProfile profile("EnvironmentalSensor", "EnviroSensor-X", mfg);
     profile.serviceUuids = { ServiceUUIDs::ENVIRONMENTAL };

@@ -269,6 +269,16 @@ inline std::vector<uint8_t> packManufacturerData(
         float val = it->second / field.scale;
 
         switch (field.dataType) {
+            case DataType::UINT8: {
+                uint8_t v = static_cast<uint8_t>(val);
+                data[2 + field.offset] = v;
+                break;
+            }
+            case DataType::INT8: {
+                int8_t v = static_cast<int8_t>(val);
+                data[2 + field.offset] = static_cast<uint8_t>(v);
+                break;
+            }
             case DataType::INT16_LE: {
                 int16_t v = static_cast<int16_t>(val);
                 data[2 + field.offset]     = v & 0xFF;
@@ -297,14 +307,9 @@ inline std::vector<uint8_t> packManufacturerData(
 
 inline std::vector<uint8_t> packSensorGroupData(
     const std::map<std::string, float>& sensorValues,
-    SensorGroup group)
+    SensorGroup group, DeviceProfile &profile)
 {
-    DeviceProfile profile;
-    if (group == SensorGroup::ENVIRONMENTAL)
-        profile = createEnviromentalProfile();
-    else
-        return {};
-
+    
     return packManufacturerData(sensorValues, profile.manufacturerFormat);
 }
 

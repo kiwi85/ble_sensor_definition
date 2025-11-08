@@ -1,15 +1,13 @@
 #pragma once
-
 #include <string>
 #include <vector>
 #include <map>
 #include <cstdint>
-#include <cstring>
 
 namespace BLEProfiles {
-static constexpr uint16_t COMPANY_ID = 0x1234; // Example Company Identifier (replace with actual)
+
 // -------------------------------------------------------------
-// Sensor group categories
+// Sensor groups
 // -------------------------------------------------------------
 enum class SensorGroup {
     ENVIRONMENTAL = 0,
@@ -21,19 +19,7 @@ enum class SensorGroup {
 };
 
 // -------------------------------------------------------------
-// Service UUIDs
-// -------------------------------------------------------------
-namespace ServiceUUIDs {
-    const char* const ENVIRONMENTAL = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E";
-    const char* const AIR_QUALITY   = "6E400002-B5A3-F393-E0A9-E50E24DCCA9E";
-    const char* const MOTION        = "6E400003-B5A3-F393-E0A9-E50E24DCCA9E";
-    const char* const AMBIENT       = "6E400004-B5A3-F393-E0A9-E50E24DCCA9E";
-    const char* const SYSTEM        = "6E400005-B5A3-F393-E0A9-E50E24DCCA9E";
-    const char* const CURRENT       = "6E400006-B5A3-F393-E0A9-E50E24DCCA9E";
-}
-
-// -------------------------------------------------------------
-// DataType enum
+// Data types
 // -------------------------------------------------------------
 enum class DataType {
     UINT8, INT8,
@@ -44,7 +30,52 @@ enum class DataType {
 };
 
 // -------------------------------------------------------------
-// DataFieldConfig
+// Company IDs (one per sensor group, replaces UUIDs)
+// -------------------------------------------------------------
+inline constexpr uint16_t COMPANY_ID_ENVIRONMENTAL = 0x1001;
+inline constexpr uint16_t COMPANY_ID_AIR_QUALITY   = 0x1002;
+inline constexpr uint16_t COMPANY_ID_MOTION        = 0x1003;
+inline constexpr uint16_t COMPANY_ID_AMBIENT       = 0x1004;
+inline constexpr uint16_t COMPANY_ID_SYSTEM        = 0x1005;
+inline constexpr uint16_t COMPANY_ID_CURRENT       = 0x1006;
+
+// -------------------------------------------------------------
+// Mapping structure for iteration
+// -------------------------------------------------------------
+inline const std::map<SensorGroup, uint16_t> SENSOR_COMPANY_ID_MAP = {
+    { SensorGroup::ENVIRONMENTAL, COMPANY_ID_ENVIRONMENTAL },
+    { SensorGroup::AIR_QUALITY,   COMPANY_ID_AIR_QUALITY },
+    { SensorGroup::MOTION,        COMPANY_ID_MOTION },
+    { SensorGroup::AMBIENT,       COMPANY_ID_AMBIENT },
+    { SensorGroup::SYSTEM,        COMPANY_ID_SYSTEM },
+    { SensorGroup::CURRENT,       COMPANY_ID_CURRENT }
+};
+
+// -------------------------------------------------------------
+// Utility to loop over company IDs
+// -------------------------------------------------------------
+inline std::vector<uint16_t> getAllCompanyIds() {
+    std::vector<uint16_t> ids;
+    for (const auto& kv : SENSOR_COMPANY_ID_MAP) {
+        ids.push_back(kv.second);
+    }
+    return ids;
+}
+
+inline std::string getSensorGroupName(SensorGroup group) {
+    switch (group) {
+        case SensorGroup::ENVIRONMENTAL: return "Environmental";
+        case SensorGroup::AIR_QUALITY:   return "AirQuality";
+        case SensorGroup::MOTION:        return "Motion";
+        case SensorGroup::AMBIENT:       return "Ambient";
+        case SensorGroup::SYSTEM:        return "System";
+        case SensorGroup::CURRENT:       return "Current";
+        default: return "Unknown";
+    }
+}
+
+// -------------------------------------------------------------
+// Data structures
 // -------------------------------------------------------------
 struct DataFieldConfig {
     std::string sensorName;
@@ -58,150 +89,28 @@ struct DataFieldConfig {
         : sensorName(name), offset(off), dataType(type), scale(sc), unit(u) {}
 };
 
-// -------------------------------------------------------------
-// ManufacturerDataFormat
-// -------------------------------------------------------------
 struct ManufacturerDataFormat {
     uint16_t companyId;
     std::vector<DataFieldConfig> dataFields;
     uint8_t totalLength;
     std::string description;
 
-    ManufacturerDataFormat() : companyId(COMPANY_ID), totalLength(0), description("") {}
+    ManufacturerDataFormat() : companyId(0), totalLength(0), description("") {}
     ManufacturerDataFormat(uint16_t id, const std::string& desc)
         : companyId(id), totalLength(0), description(desc) {}
 };
 
-// -------------------------------------------------------------
-// ServiceDataFormat
-// -------------------------------------------------------------
-struct ServiceDataFormat {
-    std::string serviceUuid;
-    std::vector<DataFieldConfig> dataFields;
-    uint8_t totalLength;
-    std::string description;
-
-    ServiceDataFormat(const std::string& uuid, const std::string& desc)
-        : serviceUuid(uuid), totalLength(0), description(desc) {}
-};
-
-// -------------------------------------------------------------
-// DeviceProfile
-// -------------------------------------------------------------
 struct DeviceProfile {
     std::string profileName;
     std::string deviceName;
-    std::vector<std::string> serviceUuids;
     ManufacturerDataFormat manufacturerFormat;
-    std::vector<ServiceDataFormat> serviceFormats;
-
-    DeviceProfile() = default;
-    DeviceProfile(const std::string& name, const std::string& device,
-                  const ManufacturerDataFormat& mfg)
-        : profileName(name), deviceName(device), manufacturerFormat(mfg) {}
 };
 
 // -------------------------------------------------------------
-// Utility: parseValue
+// Profile creation helper
 // -------------------------------------------------------------
-inline float parseValue(const uint8_t* data, size_t dataLength,
-                        const DataFieldConfig& field)
-{
-    if (field.offset >= dataLength) return 0.0f;
-    float rawValue = 0.0f;
-
-    switch (field.dataType) {
-        case DataType::UINT8: rawValue = data[field.offset]; break;
-        case DataType::INT8: rawValue = static_cast<int8_t>(data[field.offset]); break;
-
-        case DataType::UINT16_LE:
-            rawValue = data[field.offset] | (data[field.offset + 1] << 8); break;
-        case DataType::UINT16_BE:
-            rawValue = (data[field.offset] << 8) | data[field.offset + 1]; break;
-
-        case DataType::INT16_LE: {
-            int16_t v = data[field.offset] | (data[field.offset + 1] << 8);
-            rawValue = v; break;
-        }
-        case DataType::INT16_BE: {
-            int16_t v = (data[field.offset] << 8) | data[field.offset + 1];
-            rawValue = v; break;
-        }
-
-        case DataType::UINT32_LE:
-            rawValue = data[field.offset] |
-                       (data[field.offset + 1] << 8) |
-                       (data[field.offset + 2] << 16) |
-                       (data[field.offset + 3] << 24);
-            break;
-
-        case DataType::UINT32_BE:
-            rawValue = (data[field.offset] << 24) |
-                       (data[field.offset + 1] << 16) |
-                       (data[field.offset + 2] << 8) |
-                       data[field.offset + 3];
-            break;
-
-        case DataType::FLOAT_LE:
-        case DataType::FLOAT_BE: {
-            uint8_t bytes[4];
-            if (field.dataType == DataType::FLOAT_LE)
-                memcpy(bytes, &data[field.offset], 4);
-            else {
-                bytes[0] = data[field.offset + 3];
-                bytes[1] = data[field.offset + 2];
-                bytes[2] = data[field.offset + 1];
-                bytes[3] = data[field.offset];
-            }
-            memcpy(&rawValue, bytes, 4);
-            break;
-        }
-    }
-
-    return rawValue * field.scale;
-}
-
-// -------------------------------------------------------------
-// Parse manufacturer and service data
-// -------------------------------------------------------------
-inline std::map<std::string, float> parseManufacturerData(
-    const uint8_t* data, size_t dataLength,
-    const ManufacturerDataFormat& format)
-{
-    std::map<std::string, float> results;
-    if (dataLength < 2) return results;
-
-    uint16_t companyId = data[0] | (data[1] << 8);
-    if (companyId != format.companyId) return results;
-    if (dataLength < static_cast<size_t>(2 + format.totalLength)) return results;
-
-    const uint8_t* payload = data + 2;
-    size_t len = dataLength - 2;
-
-    for (const auto& field : format.dataFields)
-        results[field.sensorName] = parseValue(payload, len, field);
-
-    return results;
-}
-
-inline std::map<std::string, float> parseServiceData(
-    const uint8_t* data, size_t dataLength,
-    const ServiceDataFormat& format)
-{
-    std::map<std::string, float> results;
-    if (dataLength < format.totalLength) return results;
-
-    for (const auto& field : format.dataFields)
-        results[field.sensorName] = parseValue(data, dataLength, field);
-
-    return results;
-}
-
-// -------------------------------------------------------------
-// Profile creation helpers
-// -------------------------------------------------------------
-inline DeviceProfile createEnviromentalProfile() {
-    ManufacturerDataFormat mfg(COMPANY_ID, "Enviromental Manufacturer Data");
+inline DeviceProfile createEnvironmentalProfile() {
+    ManufacturerDataFormat mfg(COMPANY_ID_ENVIRONMENTAL, "Environmental Manufacturer Data");
     mfg.dataFields = {
         {"Temperature", 0, DataType::INT16_LE, 0.01f, "°C"},
         {"Humidity",    2, DataType::UINT16_LE, 0.01f, "%"},
@@ -209,51 +118,11 @@ inline DeviceProfile createEnviromentalProfile() {
         {"Battery",     8, DataType::UINT8,     1.0f, "%"}
     };
     mfg.totalLength = 9;
-
-    ServiceDataFormat service(ServiceUUIDs::ENVIRONMENTAL, "Environmental Sensor Data");
-    service.dataFields = mfg.dataFields;
-    service.totalLength = 9;
-
-    DeviceProfile profile("EnvironmentalSensor", "EnviroSensor-X", mfg);
-    profile.serviceUuids = { ServiceUUIDs::ENVIRONMENTAL };
-    profile.serviceFormats = { service };
-    return profile;
-}
-
-// alias for your existing code
-inline DeviceProfile createEnvironmentalSensorProfile() {
-    return createEnviromentalProfile();
+    return { "EnvironmentalSensor", "EnviroSensor-X", mfg };
 }
 
 // -------------------------------------------------------------
-// Utility mapping functions expected by main.cpp
-// -------------------------------------------------------------
-inline std::string getSensorGroupName(SensorGroup group) {
-    switch (group) {
-        case SensorGroup::ENVIRONMENTAL: return "Environmental";
-        case SensorGroup::AIR_QUALITY:   return "AirQuality";
-        case SensorGroup::MOTION:        return "Motion";
-        case SensorGroup::AMBIENT:       return "Ambient";
-        case SensorGroup::SYSTEM:        return "System";
-        case SensorGroup::CURRENT:       return "Current";
-        default:                         return "Unknown";
-    }
-}
-
-inline const char* getServiceUUIDForGroup(SensorGroup group) {
-    switch (group) {
-        case SensorGroup::ENVIRONMENTAL: return ServiceUUIDs::ENVIRONMENTAL;
-        case SensorGroup::AIR_QUALITY:   return ServiceUUIDs::AIR_QUALITY;
-        case SensorGroup::MOTION:        return ServiceUUIDs::MOTION;
-        case SensorGroup::AMBIENT:       return ServiceUUIDs::AMBIENT;
-        case SensorGroup::SYSTEM:        return ServiceUUIDs::SYSTEM;
-        case SensorGroup::CURRENT:       return ServiceUUIDs::CURRENT;
-        default:                         return "";
-    }
-}
-
-// -------------------------------------------------------------
-// Data packing helpers
+// Manufacturer data packing helpers
 // -------------------------------------------------------------
 inline std::vector<uint8_t> packManufacturerData(
     const std::map<std::string, float>& sensorValues,
@@ -261,63 +130,60 @@ inline std::vector<uint8_t> packManufacturerData(
 {
     std::vector<uint8_t> data(2 + format.totalLength, 0);
     data[0] = static_cast<uint8_t>(format.companyId & 0xFF);
-    data[1] = static_cast<uint8_t>(format.companyId >> 8);
+    data[1] = static_cast<uint8_t>((format.companyId >> 8) & 0xFF);
 
     for (const auto& field : format.dataFields) {
         auto it = sensorValues.find(field.sensorName);
         if (it == sensorValues.end()) continue;
         float val = it->second / field.scale;
 
-        switch (field.dataType) {
-            case DataType::UINT8: {
-                uint8_t v = static_cast<uint8_t>(val);
-                data[2 + field.offset] = v;
-                break;
-            }
-            case DataType::INT8: {
-                int8_t v = static_cast<int8_t>(val);
-                data[2 + field.offset] = static_cast<uint8_t>(v);
-                break;
-            }
-            case DataType::INT16_LE: {
-                int16_t v = static_cast<int16_t>(val);
-                data[2 + field.offset]     = v & 0xFF;
-                data[2 + field.offset + 1] = (v >> 8) & 0xFF;
-                break;
-            }
-            case DataType::UINT16_LE: {
-                uint16_t v = static_cast<uint16_t>(val);
-                data[2 + field.offset]     = v & 0xFF;
-                data[2 + field.offset + 1] = (v >> 8) & 0xFF;
-                break;
-            }
-            case DataType::UINT32_LE: {
-                uint32_t v = static_cast<uint32_t>(val);
-                data[2 + field.offset]     = v & 0xFF;
-                data[2 + field.offset + 1] = (v >> 8) & 0xFF;
-                data[2 + field.offset + 2] = (v >> 16) & 0xFF;
-                data[2 + field.offset + 3] = (v >> 24) & 0xFF;
-                break;
-            }
-            default: break;
-        }
+switch (field.dataType) {
+    case DataType::UINT8:
+        data[2 + field.offset] = static_cast<uint8_t>(val);
+        break;
+    case DataType::INT8:
+        data[2 + field.offset] = static_cast<int8_t>(val);
+        break;
+    case DataType::UINT16_LE: {
+        uint16_t v = static_cast<uint16_t>(val);
+        data[2 + field.offset]     = v & 0xFF;
+        data[2 + field.offset + 1] = (v >> 8) & 0xFF;
+        break;
     }
+    case DataType::INT16_LE: {
+        int16_t v = static_cast<int16_t>(val);
+        data[2 + field.offset]     = v & 0xFF;
+        data[2 + field.offset + 1] = (v >> 8) & 0xFF;
+        break;
+    }
+    case DataType::UINT32_LE: {
+        uint32_t v = static_cast<uint32_t>(val);
+        data[2 + field.offset]     = v & 0xFF;
+        data[2 + field.offset + 1] = (v >> 8) & 0xFF;
+        data[2 + field.offset + 2] = (v >> 16) & 0xFF;
+        data[2 + field.offset + 3] = (v >> 24) & 0xFF;
+        break;
+    }
+    default: break;
+}
+    }
+
     return data;
 }
 
 inline std::vector<uint8_t> packSensorGroupData(
     const std::map<std::string, float>& sensorValues,
-    SensorGroup group, DeviceProfile &profile)
+    SensorGroup /*group*/,
+    DeviceProfile &profile)
 {
-    
     return packManufacturerData(sensorValues, profile.manufacturerFormat);
 }
 
 // -------------------------------------------------------------
-// getAllProfiles
+// Get all device profiles
 // -------------------------------------------------------------
 inline std::vector<DeviceProfile> getAllProfiles() {
-    return { createEnviromentalProfile() };
+    return { createEnvironmentalProfile() };
 }
 
 } // namespace BLEProfiles

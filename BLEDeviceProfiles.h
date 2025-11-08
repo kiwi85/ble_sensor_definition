@@ -16,7 +16,8 @@ enum class SensorGroup {
     MOTION        = 2,
     AMBIENT       = 3,
     SYSTEM        = 4,
-    CURRENT       = 5
+    CURRENT       = 5,
+    UNKNOWN       = 255
 };
 
 // -------------------------------------------------------------
@@ -49,6 +50,15 @@ inline const std::map<SensorGroup, uint16_t> SENSOR_COMPANY_ID_MAP = {
     { SensorGroup::CURRENT,       COMPANY_ID_CURRENT }
 };
 
+inline const std::map<uint16_t, SensorGroup> COMPANY_ID_TO_GROUP = {
+    { COMPANY_ID_ENVIRONMENTAL, SensorGroup::ENVIRONMENTAL },
+    { COMPANY_ID_AIR_QUALITY,   SensorGroup::AIR_QUALITY },
+    { COMPANY_ID_MOTION,        SensorGroup::MOTION },
+    { COMPANY_ID_AMBIENT,       SensorGroup::AMBIENT },
+    { COMPANY_ID_SYSTEM,        SensorGroup::SYSTEM },
+    { COMPANY_ID_CURRENT,       SensorGroup::CURRENT }
+};
+
 inline const std::map<std::string, BLEProfiles::SensorGroup> PROFILE_NAME_TO_GROUP = {
     { "EnvironmentalSensor", BLEProfiles::SensorGroup::ENVIRONMENTAL },
     { "AirQualitySensor",    BLEProfiles::SensorGroup::AIR_QUALITY },
@@ -57,6 +67,7 @@ inline const std::map<std::string, BLEProfiles::SensorGroup> PROFILE_NAME_TO_GRO
     { "SystemSensor",        BLEProfiles::SensorGroup::SYSTEM },
     { "CurrentSensor",       BLEProfiles::SensorGroup::CURRENT }
 };
+
 // -------------------------------------------------------------
 // Data structures
 // -------------------------------------------------------------
@@ -124,7 +135,77 @@ inline size_t dataTypeSize(DataType dt) {
 }
 
 // -------------------------------------------------------------
-// Parse manufacturer data
+// Manufacturer data packing helpers
+// -------------------------------------------------------------
+inline std::vector<uint8_t> packManufacturerData(
+    const std::map<std::string, float>& sensorValues,
+    const ManufacturerDataFormat& format)
+{
+    std::vector<uint8_t> data(2 + format.totalLength, 0);
+
+    // First two bytes: company ID (little endian)
+    data[0] = static_cast<uint8_t>(format.companyId & 0xFF);
+    data[1] = static_cast<uint8_t>((format.companyId >> 8) & 0xFF);
+
+    for (const auto& field : format.dataFields) {
+        auto it = sensorValues.find(field.sensorName);
+        if (it == sensorValues.end()) continue;
+
+        float val = it->second / (field.scale != 0.0f ? field.scale : 1.0f);
+
+        switch (field.dataType) {
+            case DataType::UINT8:
+                data[2 + field.offset] = static_cast<uint8_t>(val);
+                break;
+            case DataType::INT8:
+                data[2 + field.offset] = static_cast<int8_t>(val);
+                break;
+            case DataType::UINT16_LE: {
+                uint16_t v = static_cast<uint16_t>(val);
+                data[2 + field.offset]     = v & 0xFF;
+                data[2 + field.offset + 1] = (v >> 8) & 0xFF;
+                break;
+            }
+            case DataType::INT16_LE: {
+                int16_t v = static_cast<int16_t>(val);
+                data[2 + field.offset]     = v & 0xFF;
+                data[2 + field.offset + 1] = (v >> 8) & 0xFF;
+                break;
+            }
+            case DataType::UINT32_LE: {
+                uint32_t v = static_cast<uint32_t>(val);
+                data[2 + field.offset]     = v & 0xFF;
+                data[2 + field.offset + 1] = (v >> 8) & 0xFF;
+                data[2 + field.offset + 2] = (v >> 16) & 0xFF;
+                data[2 + field.offset + 3] = (v >> 24) & 0xFF;
+                break;
+            }
+            case DataType::FLOAT_LE: {
+                float fval = val;
+                memcpy(&data[2 + field.offset], &fval, sizeof(float));
+                break;
+            }
+            default:
+                break; // unsupported type
+        }
+    }
+
+    return data;
+}
+
+// -------------------------------------------------------------
+// Pack data for a sensor group using the associated device profile
+// -------------------------------------------------------------
+inline std::vector<uint8_t> packSensorGroupData(
+    const std::map<std::string, float>& sensorValues,
+    SensorGroup /*group*/,
+    const DeviceProfile& profile)
+{
+    return packManufacturerData(sensorValues, profile.manufacturerFormat);
+}
+
+// -------------------------------------------------------------
+// Parse manufacturer data (handles company ID prefix)
 // -------------------------------------------------------------
 inline std::map<std::string,float> parseManufacturerData(
     const uint8_t* data,
@@ -132,35 +213,39 @@ inline std::map<std::string,float> parseManufacturerData(
     const ManufacturerDataFormat& format
 ) {
     std::map<std::string,float> values;
-    if (!data || len == 0) return values;
+    if (!data || len < 2) return values;
+
+    // Skip first two bytes (company ID)
+    const uint8_t* payload = data + 2;
+    size_t payloadLen = len - 2;
 
     for (const auto& field : format.dataFields) {
         size_t fieldLen = dataTypeSize(field.dataType);
-        if (field.offset + fieldLen > len) continue;
+        if (field.offset + fieldLen > payloadLen) continue;
 
         float parsedValue = 0.0f;
 
         switch (field.dataType) {
-            case DataType::UINT8:   parsedValue = static_cast<float>(data[field.offset]); break;
-            case DataType::INT8:    parsedValue = static_cast<float>(static_cast<int8_t>(data[field.offset])); break;
+            case DataType::UINT8:   parsedValue = static_cast<float>(payload[field.offset]); break;
+            case DataType::INT8:    parsedValue = static_cast<float>(static_cast<int8_t>(payload[field.offset])); break;
             case DataType::UINT16_LE:
-                parsedValue = static_cast<float>(data[field.offset] | (data[field.offset+1] << 8));
+                parsedValue = static_cast<float>(payload[field.offset] | (payload[field.offset+1] << 8));
                 break;
             case DataType::INT16_LE:
-                parsedValue = static_cast<float>(static_cast<int16_t>(data[field.offset] | (data[field.offset+1] << 8)));
+                parsedValue = static_cast<float>(static_cast<int16_t>(payload[field.offset] | (payload[field.offset+1] << 8)));
                 break;
             case DataType::UINT32_LE:
                 parsedValue = static_cast<float>(
-                    data[field.offset] |
-                    (data[field.offset+1] << 8) |
-                    (data[field.offset+2] << 16) |
-                    (data[field.offset+3] << 24)
+                    payload[field.offset] |
+                    (payload[field.offset+1] << 8) |
+                    (payload[field.offset+2] << 16) |
+                    (payload[field.offset+3] << 24)
                 );
                 break;
             case DataType::FLOAT_LE:
                 {
                     float val;
-                    memcpy(&val, data + field.offset, sizeof(float));
+                    memcpy(&val, payload + field.offset, sizeof(float));
                     parsedValue = val;
                 }
                 break;
@@ -188,6 +273,22 @@ inline const char* getSensorGroupName(SensorGroup group) {
         default: return "Unknown";
     }
 }
+
+// -------------------------------------------------------------
+// Lookup utilities
+// -------------------------------------------------------------
+inline uint16_t getCompanyIdForGroup(SensorGroup group) {
+    auto it = SENSOR_COMPANY_ID_MAP.find(group);
+    if (it != SENSOR_COMPANY_ID_MAP.end()) return it->second;
+    return 0xFFFF;
+}
+
+inline SensorGroup getGroupForCompanyId(uint16_t companyId) {
+    auto it = COMPANY_ID_TO_GROUP.find(companyId);
+    if (it != COMPANY_ID_TO_GROUP.end()) return it->second;
+    return SensorGroup::UNKNOWN;
+}
+
 // -------------------------------------------------------------
 // Get all device profiles
 // -------------------------------------------------------------
